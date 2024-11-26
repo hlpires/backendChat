@@ -1,6 +1,9 @@
 const express = require("express");
 const { createServer } = require("http");
 const { Server } = require("socket.io");
+const mongoose = require("mongoose");
+
+require('dotenv').config();
 
 const app = express();
 const httpServer = createServer(app);
@@ -10,18 +13,48 @@ const io = new Server(httpServer, {
     }
 });
 
+mongoose.connect(process.env.MONGODB_URI)
+    .then(() => {
+  
+    })
+    .catch((err) => {
+        console.log("Erro ao conectar ao MongoDB Atlas", err);
+    });
+
+const messageSchema = new mongoose.Schema({
+    user: String,
+    message: String,
+    timestamp: { type: Date, default: Date.now }
+});
+
+const Message = mongoose.model("Message", messageSchema);
 
 app.get("/", (req, res) => {
     res.send({ status: "on" });
 });
 
+io.on("connection", async (socket) => {
 
-io.on("connection", (socket) => {
-    console.log('Novo usuário conectado');
+    try {
+        const messages = await Message.find();
+        socket.emit('allMessages', messages);
+    } catch (err) {
+        console.log('Erro ao buscar mensagens:', err);
+    }
 
-    socket.on('sendMessage', (message) => {
-        console.log('Mensagem recebida:', message);
-        io.emit('receiveMessage', message); 
+    socket.on('sendMessage', async (message) => {
+
+        const newMessage = new Message({
+            user: message.user,
+            message: message.message
+        });
+
+        try {
+            await newMessage.save();
+            io.emit('receiveMessage', message);
+        } catch (err) {
+            console.log('Erro ao salvar mensagem no banco de dados:', err);
+        }
     });
 
     socket.on('disconnect', () => {
