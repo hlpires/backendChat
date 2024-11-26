@@ -29,6 +29,6 @@ io.on("connection", (socket) => {
     });
 });
 
-httpServer.listen(3001, () => {
-    console.log("Servidor rodando na porta 3001");
+httpServer.listen(process.env.PORT || 3001, () => {
+    console.log(`Servidor rodando na porta ${process.env.PORT || 3001}`);
 });
